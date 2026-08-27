@@ -1,0 +1,38 @@
+# Camofox container owned by the camofox-browser skill.
+#
+# The skill starts and stops this container itself. It does not attach to any
+# other Camofox deployment on the host, so the default host port is 9378 and not
+# the upstream 9377. Override it with CAMOFOX_HOST_PORT if 9378 is taken. The
+# port inside the container stays 9377, which is what the image expects.
+#
+# Fixed project name. Without it Compose derives the project from the parent
+# directory name (`docker`), which produces a `docker_default` network.
+name: camofox-skill
+
+services:
+  camofox:
+    image: ghcr.io/jo-inc/camofox-browser:1.13.0@sha256:34ea51e8f9de88d99670b809dc8c932d02ac3fa3f89bfcfb3ad04cf6c066c080
+    container_name: ${CAMOFOX_CONTAINER:-camofox-skill}
+    ports:
+      - "127.0.0.1:${CAMOFOX_HOST_PORT:-9378}:9377"
+    volumes:
+      - ./data:/root/.camofox
+      # Local `geo` plugin plus the plugin allowlist that enables it. The
+      # loader only scans /app/plugins and treats camofox.config.json's
+      # `plugins` object as an allowlist, so both mounts are required.
+      # Read-only: the image's own copies stay untouched and removing these
+      # two lines fully reverts to upstream behaviour.
+      - ./plugins/geo:/app/plugins/geo:ro
+      - ./camofox.config.json:/app/camofox.config.json:ro
+    environment:
+      CAMOFOX_BIND_HOST: 0.0.0.0
+      CAMOFOX_PORT: "9377"
+      CAMOFOX_CRASH_REPORT_ENABLED: "false"
+      MAX_OLD_SPACE_SIZE: "512"
+      # Backs the ServiceWorker/Worker scopes that Playwright's per-context
+      # timezoneId emulation does not reach; without it workers report UTC
+      # while the main thread reports the configured zone. Must match
+      # plugins.geo.timezone in camofox.config.json.
+      TZ: Europe/Warsaw
+    shm_size: 2gb
+    restart: unless-stopped

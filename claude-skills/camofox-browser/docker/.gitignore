@@ -1,0 +1,8 @@
+# Local persistent Camofox data. May contain cookies, local storage, traces,
+# uploads, and authenticated session state.
+data/
+
+# Machine-specific Compose overrides and environment files.
+docker-compose.local.yml
+.env
+.env.local
